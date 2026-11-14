@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+"""Render Fastfetch in the active Hyprland theme, then run the Fedora binary."""
+import json
+import os
+import sys
+from pathlib import Path
+
+home=Path.home()
+config=Path(os.environ.get('XDG_CONFIG_HOME',home/'.config'))
+binary=home/'.local/libexec/fastfetch'
+if not binary.is_file():
+    binary=Path('/usr/bin/fastfetch')
+if not binary.is_file():
+    raise SystemExit('Install Fastfetch first: sudo dnf install fastfetch')
+libraries=home/'.local/lib/fastfetch'
+if libraries.is_dir():
+    os.environ['LD_LIBRARY_PATH']=str(libraries)+':'+os.environ.get('LD_LIBRARY_PATH','')
+args=sys.argv[1:]
+# Preserve explicit config/generation and native help/introspection behavior.
+custom=any(arg in {'-c','--config','--gen-config','--gen-config-full','-h','--help','--version'} or arg.startswith(('--config=','--gen-config','--help','--list-')) for arg in args)
+if not custom:
+    root=config/'hypr'
+    try:
+        theme=(root/'theme-current').read_text().strip()
+        if theme not in {'everforest','lawson-night','black-arch','cyberpunk','jojo','jjk','gruvbox'}:raise ValueError('Unknown theme')
+        palette=json.loads((root/'themes'/theme/'app-palette.json').read_text())
+    except (OSError,ValueError):
+        theme='fedora';palette={'accent':'#51a2da','accent2':'#94e2d5','fg':'#eeeeee','muted':'#999999'}
+    label='Yuta' if theme=='jjk' else theme.replace('-',' ').title()
+    document={
+        '$schema':'https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json',
+        'logo':{'source':'fedora','color':{'1':palette['accent'],'2':palette['accent2']},'padding':{'top':1,'left':1,'right':4}},
+        'display':{'separator':'  ›  ','color':{'keys':palette['accent'],'output':palette['fg'],'separator':palette['muted']},'key':{'width':10}},
+        'modules':[
+            {'type':'custom','format':'fedora.devlog','outputColor':palette['accent'],'key':' '},
+            {'type':'custom','format':'TECH / CODE / LINUX','outputColor':palette['muted'],'key':' '},
+            'break',
+            {'type':'os','key':'OS','format':'{name} {version-id}'},
+            {'type':'kernel','key':'Kernel','format':'{release}'},
+            {'type':'wm','key':'Desktop'},
+            {'type':'custom','key':'Theme','format':label,'outputColor':palette['accent2']},
+            {'type':'shell','key':'Shell'},
+            {'type':'terminal','key':'Terminal'},
+            'break',
+            {'type':'cpu','key':'CPU','format':'{name}'},
+            {'type':'gpu','key':'GPU','format':'{name}'},
+            {'type':'memory','key':'Memory','percent':{'type':1}},
+            {'type':'display','key':'Display'},
+            {'type':'uptime','key':'Uptime'},
+            'break',
+            {'type':'colors','symbol':'circle'}
+        ]
+    }
+    folder=config/'fastfetch';folder.mkdir(parents=True,exist_ok=True)
+    path=folder/'config.jsonc'
+    # This generated config is owned by the theme-aware launcher.
+    temp=path.with_name(f'.config.{os.getpid()}.tmp')
+    temp.write_text(json.dumps(document,indent=2)+'\n');os.replace(temp,path)
+os.execv(str(binary),[str(binary),*args])

@@ -12,6 +12,7 @@ Seven themes: Everforest, Lawson Night, Black Arch, Cyberpunk, JoJo, Yuta, and G
 - `swww` wallpaper transitions with a `swaybg` fallback, plus persistent wallpaper selection.
 - Hyprlock with themed wallpaper, large clock, live seconds, and animated password feedback.
 - Kitty, GTK 3/4, Wofi, and application palette templates.
+- Theme-aware Fastfetch: Fedora logo, fedora.devlog heading, and colors from the active palette. Run `fastfetch` again after switching themes.
 - Current wallpaper collections and per-theme defaults. Lawson Night uses the blue cloud scene; Gruvbox uses `gruvbox1.png`.
 
 ## Requirements
@@ -21,6 +22,7 @@ This configuration uses **Hyprland's Lua API**, not the older `.conf` format. It
 Install these dependencies through your distribution or their upstream projects:
 
 - Hyprland with Lua configuration support, Hyprlock (tested with 0.9.7), Waybar, Kitty, Wofi.
+- Fastfetch 2.68 or newer (`sudo dnf install fastfetch` on Fedora). The wrapper uses the packaged `/usr/bin/fastfetch` or an existing local binary at `~/.local/libexec/fastfetch`. Its generated config is `~/.config/fastfetch/config.jsonc`; use `fastfetch -c another-config.jsonc` for manual overrides.
 - Python 3.10+, PyGObject, Pycairo, Pillow; GTK 3/4; `gtk-layer-shell` and **`gtk4-layer-shell`**, including their GObject introspection typelibs.
 - [`swww` and `swww-daemon`](https://github.com/LGFae/swww) for animation. `swaybg` is supported as a fallback without transition effects.
 - NetworkManager (`nmcli`), BlueZ (`bluetoothctl`), PipeWire/WirePlumber (`wpctl`), `brightnessctl`, `playerctl`, `pactl` (audio panels), `notify-send`.
