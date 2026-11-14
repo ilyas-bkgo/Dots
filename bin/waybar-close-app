@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+wofi_cmd=(wofi --dmenu --style @HOME@/.config/wofi/style.css --width 520 --lines 12)
+mapfile -t windows < <(hyprctl clients -j 2>/dev/null | jq -r '.[] | select(.mapped == true) | [.address, (if .title == "" then .class else .title end), .class] | @tsv')
+((${#windows[@]})) || {
+    printf '%s\n' 'No open apps to close' | "${wofi_cmd[@]}" --prompt 'Close app' >/dev/null || true
+    exit 0
+}
+
+labels=()
+addresses=()
+for row in "${windows[@]}"; do
+    IFS=$'\t' read -r address title class <<< "$row"
+    addresses+=("$address")
+    labels+=("${title}  ·  ${class}")
+done
+
+choice=$(printf '%s\n' "${labels[@]}" | "${wofi_cmd[@]}" --prompt 'Choose app to close') || exit 0
+for i in "${!labels[@]}"; do
+    if [[ "$choice" == "${labels[i]}" ]]; then
+        hyprctl dispatch closewindow "address:${addresses[i]}"
+        exit 0
+    fi
+done

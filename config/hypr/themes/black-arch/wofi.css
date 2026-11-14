@@ -1,0 +1,9 @@
+/* Fully opaque black-arch palette. Kept self-contained for Wofi's GTK CSS loader. */
+* { font-family: "Noto Sans", sans-serif; font-size: 14px; color: #ffffff; }
+window { margin: 0; padding: 10px; border: 2px solid #b9b9b9; border-radius: 8px; background-image: none; background-color: #111111; }
+#outer-box, #inner-box, #scroll { margin: 4px; padding: 5px; background-image: none; background-color: #111111; }
+#input { margin: 5px; padding: 9px; border: 1px solid #b9b9b9; border-radius: 5px; color: #ffffff; background-image: none; background-color: #1b1b1b; }
+#entry { padding: 7px; border-radius: 5px; background-image: none; background-color: #111111; }
+#text { color: #ffffff; text-shadow: none; }
+#entry:selected { background-image: none; background-color: #b9b9b9; }
+#entry:selected #text { color: #111111; }

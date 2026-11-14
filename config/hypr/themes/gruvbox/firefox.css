@@ -1,0 +1,17 @@
+/* gruvbox: Firefox browser chrome. */
+:root {
+  --toolbar-bgcolor: #282828 !important;
+  --toolbar-color: #ebdbb2 !important;
+  --lwt-accent-color: #282828 !important;
+  --lwt-text-color: #ebdbb2 !important;
+  --lwt-selected-tab-background-color: #3c3836 !important;
+  --lwt-tab-text: #928374 !important;
+  --lwt-brighttext: #ebdbb2 !important;
+  --focus-outline-color: #d79921 !important;
+}
+#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar,
+#sidebar-box, #sidebar-header { background-color: #282828 !important; color: #ebdbb2 !important; }
+#urlbar-background, .searchbar-textbox { background-color: #3c3836 !important; color: #ebdbb2 !important; border-color: #d79921 !important; }
+.tabbrowser-tab[selected] .tab-background { background-color: #3c3836 !important; }
+.tabbrowser-tab[selected] .tab-label { color: #ebdbb2 !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #928374 !important; }

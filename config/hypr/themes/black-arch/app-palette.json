@@ -1,0 +1,13 @@
+{
+  "bg": "#000000",
+  "surface": "#111111",
+  "surface2": "#262626",
+  "fg": "#ffffff",
+  "muted": "#989898",
+  "accent": "#989898",
+  "accent2": "#b9b9b9",
+  "green": "#8e8e8e",
+  "yellow": "#b9b9b9",
+  "red": "#646464",
+  "purple": "#747474"
+}

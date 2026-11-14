@@ -1,0 +1,11 @@
+/* Fully opaque lawson-night palette. Kept self-contained for Wofi's GTK CSS loader. */
+* { font-family: "Noto Sans", sans-serif; font-size: 14px; color: #cdd6f4; }
+window { margin: 0; padding: 10px; border: 2px solid #89b4fa; border-radius: 8px; background-image: none; background-color: #1e1e2e; }
+#outer-box, #inner-box, #scroll { margin: 4px; padding: 5px; background-image: none; background-color: #1e1e2e; }
+#input { margin: 5px; padding: 9px; border: 1px solid #89b4fa; border-radius: 5px; color: #cdd6f4; background-image: none; background-color: #29293b; }
+#entry { padding: 7px; border-radius: 5px; background-image: none; background-color: #1e1e2e; }
+#text { color: #cdd6f4; text-shadow: none; }
+#entry:selected { background-image: none; background-color: #89b4fa; }
+#entry:selected #text { color: #1e1e2e; }
+
+#img { margin: 3px 14px 3px 3px; }

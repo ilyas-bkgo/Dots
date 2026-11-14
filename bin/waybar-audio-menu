@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+wofi_cmd=(wofi --dmenu --style @HOME@/.config/wofi/style.css --width 460 --lines 12)
+menu() { printf '%s\n' "$@" | "${wofi_cmd[@]}" --prompt "$1"; }
+
+choose_nodes() {
+    local section=$1 next=$2 prompt=$3 choice id label
+    local -a ids=() labels=()
+    mapfile -t nodes < <(wpctl status | awk -v start="$section" -v stop="$next" '
+        index($0, start) { inside=1; next }
+        inside && index($0, stop) { exit }
+        inside && match($0, /^[[:space:]│├─└─*]*([0-9]+)\. (.*)$/, m) { print m[1] "\t" m[2] }
+    ')
+    for row in "${nodes[@]}"; do
+        IFS=$'\t' read -r id label <<< "$row"
+        ids+=("$id")
+        labels+=("$label")
+    done
+    ((${#ids[@]})) || { printf '%s\n' 'No devices found' | "${wofi_cmd[@]}" --prompt "$prompt" >/dev/null || true; return; }
+    choice=$(printf '%s\n' "${labels[@]}" | "${wofi_cmd[@]}" --prompt "$prompt") || return
+    for i in "${!labels[@]}"; do
+        if [[ "${labels[i]}" == "$choice" ]]; then wpctl set-default "${ids[i]}"; return; fi
+    done
+}
+
+while :; do
+    volume=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{printf "%d%%", $2 * 100}')
+    muted=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | grep -q MUTED && printf 'muted' || printf 'on')
+    choice=$(printf '%s\n' "Volume: ${volume:-?} (${muted})" 'Volume up 5%' 'Volume down 5%' 'Mute / unmute' 'Choose output device' 'Choose microphone' 'Mute / unmute microphone' 'Per-app volume' 'Open sound settings' 'Back' | "${wofi_cmd[@]}" --prompt 'Sound') || exit 0
+    case "$choice" in
+        'Volume up 5%') wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+ ;;
+        'Volume down 5%') wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+        'Mute / unmute') wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+        'Choose output device') choose_nodes '├─ Sinks:' '├─ Sources:' 'Output device' ;;
+        'Choose microphone') choose_nodes '├─ Sources:' '├─ Filters:' 'Microphone' ;;
+        'Mute / unmute microphone') wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ;;
+        'Per-app volume')
+            mapfile -t streams < <(wpctl status | awk '/├─ Streams:/{inside=1; next} /^Video/{inside=0} inside && match($0, /^[[:space:]]+([0-9]+)\. (.*)$/, m) { print m[1] "\t" m[2] }')
+            stream_labels=(); stream_ids=()
+            for row in "${streams[@]}"; do IFS=$'\t' read -r id label <<< "$row"; stream_ids+=("$id"); stream_labels+=("$label"); done
+            if ((${#stream_ids[@]})); then
+                selected=$(printf '%s\n' "${stream_labels[@]}" | "${wofi_cmd[@]}" --prompt 'Choose app') || continue
+                for i in "${!stream_labels[@]}"; do
+                    [[ "${stream_labels[i]}" == "$selected" ]] || continue
+                    app_id=${stream_ids[i]}
+                    action=$(printf '%s\n' 'Volume up 5%' 'Volume down 5%' 'Mute / unmute' 'Back' | "${wofi_cmd[@]}" --prompt "$selected") || break
+                    case "$action" in
+                        'Volume up 5%') wpctl set-volume -l 1.5 "$app_id" 5%+ ;;
+                        'Volume down 5%') wpctl set-volume "$app_id" 5%- ;;
+                        'Mute / unmute') wpctl set-mute "$app_id" toggle ;;
+                    esac
+                    break
+                done
+            fi
+            ;;
+        'Open sound settings') gnome-control-center sound ;;
+        'Back'|'') exit 0 ;;
+    esac
+done

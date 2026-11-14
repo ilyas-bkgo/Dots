@@ -1,0 +1,17 @@
+/* cyberpunk: Firefox browser chrome. */
+:root {
+  --toolbar-bgcolor: #10131b !important;
+  --toolbar-color: #f5e6e8 !important;
+  --lwt-accent-color: #10131b !important;
+  --lwt-text-color: #f5e6e8 !important;
+  --lwt-selected-tab-background-color: #1a1e29 !important;
+  --lwt-tab-text: #a5a9b8 !important;
+  --lwt-brighttext: #f5e6e8 !important;
+  --focus-outline-color: #ff3b81 !important;
+}
+#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar,
+#sidebar-box, #sidebar-header { background-color: #10131b !important; color: #f5e6e8 !important; }
+#urlbar-background, .searchbar-textbox { background-color: #1a1e29 !important; color: #f5e6e8 !important; border-color: #ff3b81 !important; }
+.tabbrowser-tab[selected] .tab-background { background-color: #1a1e29 !important; }
+.tabbrowser-tab[selected] .tab-label { color: #f5e6e8 !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #a5a9b8 !important; }

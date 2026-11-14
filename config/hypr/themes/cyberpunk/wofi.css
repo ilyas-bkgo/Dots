@@ -1,0 +1,9 @@
+/* Fully opaque cyberpunk palette. Kept self-contained for Wofi's GTK CSS loader. */
+* { font-family: "Noto Sans", sans-serif; font-size: 14px; color: #f5e6e8; }
+window { margin: 0; padding: 10px; border: 2px solid #ff3b81; border-radius: 8px; background-image: none; background-color: #10131b; }
+#outer-box, #inner-box, #scroll { margin: 4px; padding: 5px; background-image: none; background-color: #10131b; }
+#input { margin: 5px; padding: 9px; border: 1px solid #ff3b81; border-radius: 5px; color: #f5e6e8; background-image: none; background-color: #1a1e29; }
+#entry { padding: 7px; border-radius: 5px; background-image: none; background-color: #10131b; }
+#text { color: #f5e6e8; text-shadow: none; }
+#entry:selected { background-image: none; background-color: #ff3b81; }
+#entry:selected #text { color: #10131b; }

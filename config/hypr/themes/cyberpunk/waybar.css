@@ -1,0 +1,12 @@
+/* cyberpunk colors for the existing Waybar layout. */
+@define-color bar_bg #10131b;
+@define-color surface #1a1e29;
+@define-color surface2 #282d3a;
+@define-color text #f5e6e8;
+@define-color muted #a5a9b8;
+@define-color accent #ff3b81;
+@define-color accent2 #00e5ff;
+@define-color success #9fe870;
+@define-color warning #ffd166;
+@define-color critical #ff5c5c;
+@define-color border #414958;

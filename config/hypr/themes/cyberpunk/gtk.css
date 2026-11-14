@@ -1,0 +1,30 @@
+/* cyberpunk GTK palette. */
+@define-color window_bg_color #10131b;
+@define-color view_bg_color #10131b;
+@define-color theme_base_color #10131b;
+@define-color window_fg_color #f5e6e8;
+@define-color view_fg_color #f5e6e8;
+@define-color theme_text_color #f5e6e8;
+@define-color accent_color #ff3b81;
+@define-color accent_bg_color #ff3b81;
+@define-color accent_fg_color #10131b;
+@define-color headerbar_bg_color #1a1e29;
+@define-color headerbar_fg_color #f5e6e8;
+@define-color borders #414958;
+@define-color error_color #ff5c5c;
+@define-color warning_color #ffd166;
+@define-color success_color #9fe870;
+
+/* Palette hooks consumed by GTK3/GTK4 dark themes. */
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_bg_color @window_bg_color;
+@define-color theme_unfocused_fg_color @window_fg_color;
+@define-color theme_unfocused_base_color @view_bg_color;
+@define-color theme_unfocused_selected_bg_color @accent_bg_color;
+@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+selection { background-color: @accent_bg_color; color: @accent_fg_color; }

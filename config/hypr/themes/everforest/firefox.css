@@ -1,0 +1,17 @@
+/* everforest: Firefox browser chrome. */
+:root {
+  --toolbar-bgcolor: #323d43 !important;
+  --toolbar-color: #d8caac !important;
+  --lwt-accent-color: #323d43 !important;
+  --lwt-text-color: #d8caac !important;
+  --lwt-selected-tab-background-color: #3c474d !important;
+  --lwt-tab-text: #868d80 !important;
+  --lwt-brighttext: #d8caac !important;
+  --focus-outline-color: #a7c080 !important;
+}
+#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar,
+#sidebar-box, #sidebar-header { background-color: #323d43 !important; color: #d8caac !important; }
+#urlbar-background, .searchbar-textbox { background-color: #3c474d !important; color: #d8caac !important; border-color: #a7c080 !important; }
+.tabbrowser-tab[selected] .tab-background { background-color: #3c474d !important; }
+.tabbrowser-tab[selected] .tab-label { color: #d8caac !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #868d80 !important; }

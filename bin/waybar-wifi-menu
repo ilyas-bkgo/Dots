@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+wofi_cmd=(env -u GTK_THEME wofi --dmenu --style @HOME@/.config/wofi/style.css --width 440 --lines 12)
+notify_menu() { printf '%s\n' "$1" | "${wofi_cmd[@]}" --prompt 'Network'; }
+
+if ! command -v nmcli >/dev/null 2>&1; then
+    notify_menu 'NetworkManager CLI (nmcli) is unavailable'
+    exit 1
+fi
+
+state=$(nmcli -t -f WIFI general 2>/dev/null | head -n1)
+if [[ "$state" != enabled ]]; then
+    choice=$(printf '%s\n' 'Turn Wi-Fi on' 'Open network settings' | "${wofi_cmd[@]}" --prompt 'Wi-Fi is off') || exit 0
+    case "$choice" in
+        'Turn Wi-Fi on') nmcli radio wifi on ;;
+        'Open network settings') env -u GTK_THEME nm-connection-editor ;;
+    esac
+    exit 0
+fi
+
+mapfile -t rows < <(nmcli -t --escape yes -f SSID,SIGNAL,SECURITY device wifi list --rescan yes 2>/dev/null)
+labels=('Open network settings' 'Turn Wi-Fi off')
+ssids=()
+securities=()
+for row in "${rows[@]}"; do
+    # nmcli escapes colons inside SSIDs as \\:, so temporarily protect them while splitting.
+    row=${row//\\:/$'\034'}
+    IFS=: read -r ssid signal security <<< "$row"
+    ssid=${ssid//$'\034'/\:}
+    [[ -z "$ssid" ]] && continue
+    ssid=${ssid//\\n/$'\n'}
+    ssid=${ssid//\\\\/\\}
+    ssids+=("$ssid")
+    securities+=("$security")
+    if [[ -n "$security" ]]; then
+        lock='secured'
+    else
+        lock='open'
+    fi
+    labels+=("${#ssids[@]}.  ${ssid}  ·  ${signal}%  ·  ${lock}")
+done
+labels+=('Choose DNS provider')
+
+choice=$(printf '%s\n' "${labels[@]}" | "${wofi_cmd[@]}" --prompt 'Wi-Fi networks') || exit 0
+case "$choice" in
+    'Open network settings') exec env -u GTK_THEME nm-connection-editor ;;
+    'Turn Wi-Fi off') nmcli radio wifi off; exit 0 ;;
+    'Choose DNS provider')
+        device=$(nmcli -t -f DEVICE,TYPE,STATE device status | awk -F: '$2 == "wifi" && $3 == "connected" {print $1; exit}')
+        if [[ -z "$device" ]]; then
+            printf '%s\n' 'Connect to Wi-Fi before choosing a DNS provider' | "${wofi_cmd[@]}" --prompt 'DNS' >/dev/null || true
+            exit 0
+        fi
+        connection=$(nmcli -g GENERAL.CONNECTION device show "$device" 2>/dev/null | head -n1)
+        provider=$(printf '%s\n' 'Automatic (network default)' 'Cloudflare' 'Google' 'Quad9' | "${wofi_cmd[@]}" --prompt 'DNS provider') || exit 0
+        case "$provider" in
+            'Automatic (network default)')
+                nmcli connection modify "$connection" ipv4.dns '' ipv4.ignore-auto-dns no ipv6.dns '' ipv6.ignore-auto-dns no
+                ;;
+            Cloudflare)
+                nmcli connection modify "$connection" ipv4.dns '1.1.1.1,1.0.0.1' ipv4.ignore-auto-dns yes ipv6.dns '2606:4700:4700::1111,2606:4700:4700::1001' ipv6.ignore-auto-dns yes
+                ;;
+            Google)
+                nmcli connection modify "$connection" ipv4.dns '8.8.8.8,8.8.4.4' ipv4.ignore-auto-dns yes ipv6.dns '2001:4860:4860::8888,2001:4860:4860::8844' ipv6.ignore-auto-dns yes
+                ;;
+            Quad9)
+                nmcli connection modify "$connection" ipv4.dns '9.9.9.9,149.112.112.112' ipv4.ignore-auto-dns yes ipv6.dns '2620:fe::fe,2620:fe::9' ipv6.ignore-auto-dns yes
+                ;;
+        esac
+        nmcli device reapply "$device" >/dev/null 2>&1 || nmcli connection up "$connection" ifname "$device"
+        exit 0
+        ;;
+esac
+
+index=${choice%%.*}
+[[ "$index" =~ ^[0-9]+$ ]] || exit 0
+(( index >= 1 && index <= ${#ssids[@]} )) || exit 0
+ssid=${ssids[index-1]}
+security=${securities[index-1]}
+if [[ -n "$security" ]]; then
+    password=$(printf '' | "${wofi_cmd[@]}" --password --prompt "Password for ${ssid}") || exit 0
+    [[ -n "$password" ]] || exit 0
+    nmcli device wifi connect "$ssid" password "$password"
+else
+    nmcli device wifi connect "$ssid"
+fi

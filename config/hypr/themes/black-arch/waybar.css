@@ -1,0 +1,12 @@
+/* black-arch colors for the existing Waybar layout. */
+@define-color bar_bg #000000;
+@define-color surface #111111;
+@define-color surface2 #262626;
+@define-color text #ffffff;
+@define-color muted #989898;
+@define-color accent #989898;
+@define-color accent2 #b9b9b9;
+@define-color success #8e8e8e;
+@define-color warning #b9b9b9;
+@define-color critical #646464;
+@define-color border #585858;

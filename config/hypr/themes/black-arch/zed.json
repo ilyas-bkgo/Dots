@@ -1,0 +1,63 @@
+{
+  "background": "#000000",
+  "foreground": "#ffffff",
+  "accent": "#989898",
+  "border": "#262626",
+  "border.focused": "#989898",
+  "border.selected": "#989898",
+  "border.variant": "#262626",
+  "text": "#ffffff",
+  "text.muted": "#989898",
+  "text.accent": "#989898",
+  "element.background": "#111111",
+  "element.hover": "#262626",
+  "element.active": "#262626",
+  "panel.background": "#000000",
+  "title_bar.background": "#000000",
+  "toolbar.background": "#111111",
+  "tab_bar.background": "#000000",
+  "tab.active_background": "#111111",
+  "tab.inactive_background": "#000000",
+  "editor.background": "#000000",
+  "editor.foreground": "#ffffff",
+  "editor.gutter.background": "#000000",
+  "editor.line_number": "#989898",
+  "editor.active_line_number": "#989898",
+  "editor.active_line.background": "#111111",
+  "editor.highlighted_line.background": "#111111",
+  "editor.indent_guide": "#262626",
+  "editor.indent_guide_active": "#989898",
+  "syntax": {
+    "comment": {
+      "color": "#989898"
+    },
+    "string": {
+      "color": "#8e8e8e"
+    },
+    "keyword": {
+      "color": "#747474"
+    },
+    "number": {
+      "color": "#b9b9b9"
+    },
+    "function": {
+      "color": "#989898"
+    },
+    "type": {
+      "color": "#b9b9b9"
+    },
+    "variable": {
+      "color": "#ffffff"
+    }
+  },
+  "terminal.background": "#000000",
+  "terminal.foreground": "#ffffff",
+  "terminal.ansi.black": "#000000",
+  "terminal.ansi.red": "#646464",
+  "terminal.ansi.green": "#8e8e8e",
+  "terminal.ansi.yellow": "#b9b9b9",
+  "terminal.ansi.blue": "#989898",
+  "terminal.ansi.magenta": "#747474",
+  "terminal.ansi.cyan": "#b9b9b9",
+  "terminal.ansi.white": "#ffffff"
+}

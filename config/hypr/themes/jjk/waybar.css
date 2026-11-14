@@ -1,0 +1,12 @@
+/* jujutsu-kaisen colors for the existing Waybar layout. */
+@define-color bar_bg #11121d;
+@define-color surface #1c1d2e;
+@define-color surface2 #2b2b43;
+@define-color text #e7e6f5;
+@define-color muted #9d9ab8;
+@define-color accent #b58cff;
+@define-color accent2 #78dce8;
+@define-color success #8acb88;
+@define-color warning #e4c16f;
+@define-color critical #fa6675;
+@define-color border #414958;

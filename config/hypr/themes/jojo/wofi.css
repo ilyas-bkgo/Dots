@@ -1,0 +1,9 @@
+/* Fully opaque jojo7 palette. Kept self-contained for Wofi's GTK CSS loader. */
+* { font-family: "Noto Sans", sans-serif; font-size: 14px; color: #f0e9dc; }
+window { margin: 0; padding: 10px; border: 2px solid #d0a753; border-radius: 8px; background-image: none; background-color: #17151b; }
+#outer-box, #inner-box, #scroll { margin: 4px; padding: 5px; background-image: none; background-color: #17151b; }
+#input { margin: 5px; padding: 9px; border: 1px solid #d0a753; border-radius: 5px; color: #f0e9dc; background-image: none; background-color: #24212c; }
+#entry { padding: 7px; border-radius: 5px; background-image: none; background-color: #17151b; }
+#text { color: #f0e9dc; text-shadow: none; }
+#entry:selected { background-image: none; background-color: #d0a753; }
+#entry:selected #text { color: #17151b; }

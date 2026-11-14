@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -uo pipefail
+export PATH="$HOME/.local/bin:$PATH"
+
+wallpaper_dir="$HOME/.local/share/wallpapers"
+config_dir="$HOME/.config/hypr"
+state_file="$config_dir/current-wallpaper"
+wofi_cmd=(env -u GTK_THEME wofi --dmenu --style "$HOME/.config/wofi/style.css" --width 560 --lines 12)
+
+set_wallpaper_link() {
+    local image=$1 link="$config_dir/wallpaper-active" tmp="$config_dir/.wallpaper-active.new.$$"
+    ln -sfn -- "$image" "$tmp"
+    mv -Tf -- "$tmp" "$link"
+}
+
+active_theme() {
+    local theme
+    theme=$(cat "$config_dir/theme-current" 2>/dev/null || true)
+    case "$theme" in everforest|lawson-night|black-arch|cyberpunk|jojo|jjk|gruvbox) printf '%s\n' "$theme" ;; *) printf '%s\n' everforest ;; esac
+}
+
+active_theme_wallpaper() {
+    local theme image
+    theme=$(active_theme)
+    for image in "$config_dir/themes/$theme/wallpaper.png" "$config_dir/themes/$theme/wallpaper.jpg"; do
+        if [[ -r "$image" ]]; then printf '%s\n' "$image"; return 0; fi
+    done
+    printf '%s\n' "$wallpaper_dir/everforest/everforest.png"
+}
+
+apply_wallpaper() {
+    local image=$1 pid log_dir log_file old_pid
+    if [[ ! -r "$image" ]]; then
+        printf 'Wallpaper is missing or unreadable: %s\n' "$image" >&2
+        return 1
+    fi
+    log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/wallpaper-picker"
+    mkdir -p "$log_dir"
+    log_file="$log_dir/swaybg.log"
+    if command -v swww >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        if ! swww query >/dev/null 2>&1; then
+            setsid swww-daemon >>"$log_dir/swww.log" 2>&1 </dev/null &
+            for attempt in {1..30}; do
+                swww query >/dev/null 2>&1 && break
+                sleep 0.1
+            done
+        fi
+        if swww img "$image" --transition-type grow --transition-pos center --transition-duration 1.2 --transition-bezier .22,1,.36,1 --transition-fps 60; then
+            pkill -x swaybg 2>/dev/null || true
+            printf '%s\n' "$image" > "$state_file"
+            set_wallpaper_link "$image" || return 1
+            printf '%s selected and applied by swww\n' "$(date --iso-8601=seconds)" >> "$log_dir/selections.log"
+            return 0
+        fi
+    fi
+    if command -v swaybg >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        # Start the replacement first so an invalid file cannot blank the desktop.
+        setsid swaybg -i "$image" -m fill </dev/null >>"$log_file" 2>&1 &
+        pid=$!
+        sleep 0.5
+        if ! kill -0 "$pid" 2>/dev/null; then
+            printf '%s FAILED to apply %s (swaybg exited; see %s)\n' "$(date --iso-8601=seconds)" "$image" "$log_file" >> "$log_dir/selections.log"
+            if command -v notify-send >/dev/null 2>&1; then
+                notify-send 'Wallpaper not applied' "swaybg could not open: ${image##*/}"
+            fi
+            return 1
+        fi
+        while IFS= read -r old_pid; do
+            [[ -n "$old_pid" && "$old_pid" != "$pid" ]] && kill "$old_pid" 2>/dev/null || true
+        done < <(pgrep -x swaybg 2>/dev/null || true)
+        printf '%s\n' "$image" > "$state_file"
+        set_wallpaper_link "$image" || return 1
+        printf '%s applied by swaybg: %s (pid %s)\n' "$(date --iso-8601=seconds)" "$image" "$pid" >> "$log_dir/selections.log"
+        return 0
+    fi
+    printf 'No wallpaper backend available (swww or swaybg).\n' >&2
+    return 1
+}
+
+case "${1:---pick}" in
+    --start)
+        theme=$(active_theme)
+        image=$(active_theme_wallpaper)
+        if [[ -r "$state_file" ]]; then
+            IFS= read -r saved < "$state_file"
+            case "$saved" in
+                "$wallpaper_dir/$theme/"*) [[ -r "$saved" ]] && image=$saved ;;
+            esac
+        fi
+        apply_wallpaper "$image"
+        ;;
+    --apply)
+        [[ -n "${2:-}" ]] && apply_wallpaper "$2"
+        ;;
+    --pick)
+        exec "$HOME/.local/bin/visual-theme-picker.py" wallpapers
+        ;;
+    *) exit 2 ;;
+esac

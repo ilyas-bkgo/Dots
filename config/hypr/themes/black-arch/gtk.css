@@ -1,0 +1,30 @@
+/* black-arch GTK palette. */
+@define-color window_bg_color #000000;
+@define-color view_bg_color #000000;
+@define-color theme_base_color #000000;
+@define-color window_fg_color #ffffff;
+@define-color view_fg_color #ffffff;
+@define-color theme_text_color #ffffff;
+@define-color accent_color #989898;
+@define-color accent_bg_color #989898;
+@define-color accent_fg_color #000000;
+@define-color headerbar_bg_color #111111;
+@define-color headerbar_fg_color #ffffff;
+@define-color borders #585858;
+@define-color error_color #646464;
+@define-color warning_color #b9b9b9;
+@define-color success_color #8e8e8e;
+
+/* Palette hooks consumed by GTK3/GTK4 dark themes. */
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_bg_color @window_bg_color;
+@define-color theme_unfocused_fg_color @window_fg_color;
+@define-color theme_unfocused_base_color @view_bg_color;
+@define-color theme_unfocused_selected_bg_color @accent_bg_color;
+@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+selection { background-color: @accent_bg_color; color: @accent_fg_color; }

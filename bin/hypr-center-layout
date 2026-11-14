@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+layout=$(hyprctl getoption general:layout -j | jq -r '.str')
+if [[ "$layout" == "master" ]]; then
+  hyprctl keyword general:layout dwindle >/dev/null
+else
+  hyprctl keyword general:layout master >/dev/null
+  hyprctl dispatch layoutmsg orientationcenter >/dev/null
+fi

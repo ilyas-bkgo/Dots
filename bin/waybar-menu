@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+wofi_mode_file="${XDG_RUNTIME_DIR:-/tmp}/waybar-wofi.mode"
+if pgrep -x wofi >/dev/null 2>&1; then
+    current_mode=$(cat "$wofi_mode_file" 2>/dev/null || true)
+    pkill -TERM -x wofi 2>/dev/null || true
+    [[ "$current_mode" == menu ]] && exit 0
+fi
+printf 'menu\n' > "$wofi_mode_file"
+clear_wofi_mode() { [[ "$(cat "$wofi_mode_file" 2>/dev/null || true)" == menu ]] && : > "$wofi_mode_file"; }
+trap clear_wofi_mode EXIT
+
+# Keep the bar to one popup at a time when switching between widgets.
+panel_pid_file="${XDG_RUNTIME_DIR:-/tmp}/waybar-panel.pid"
+if [[ -r "$panel_pid_file" ]]; then
+    panel_pid=$(<"$panel_pid_file")
+    if [[ "$panel_pid" =~ ^[0-9]+$ ]] && tr '\0' ' ' < "/proc/$panel_pid/cmdline" 2>/dev/null | grep -q '@HOME@/.local/bin/waybar-panels'; then
+        kill -TERM "$panel_pid" 2>/dev/null || true
+        for _ in {1..20}; do
+            kill -0 "$panel_pid" 2>/dev/null || break
+            sleep 0.02
+        done
+    fi
+fi
+
+wofi_cmd=(env -u GTK_THEME wofi --dmenu --style @HOME@/.config/wofi/style.css --width 400 --lines 10)
+menu() { printf '%s\n' "$@" | "${wofi_cmd[@]}" --prompt 'Menu'; }
+
+choice=$(menu 'Applications' 'Sound' 'Network / Wi-Fi' 'Bluetooth devices' 'Display settings' 'Battery & power profile' 'Calendar' 'Media controls' 'System settings' 'Close an app' 'Lock screen' 'Power options') || exit 0
+case "$choice" in
+    'Applications') exec env -u GTK_THEME wofi --show drun --style @HOME@/.config/wofi/style.css ;;
+    'Sound') exec @HOME@/.local/bin/waybar-panels audio ;;
+    'Network / Wi-Fi') exec @HOME@/.local/bin/waybar-panels network ;;
+    'Bluetooth devices') exec @HOME@/.local/bin/waybar-bluetooth-menu ;;
+    'Display settings') exec @HOME@/.local/bin/waybar-panels display ;;
+    'Battery & power profile') exec @HOME@/.local/bin/waybar-panels power ;;
+    'Calendar') exec gnome-calendar ;;
+    'Media controls')
+        action=$(printf '%s\n' 'Play / pause' 'Previous track' 'Next track' | "${wofi_cmd[@]}" --prompt 'Media') || exit 0
+        case "$action" in
+            'Play / pause') playerctl play-pause ;;
+            'Previous track') playerctl previous ;;
+            'Next track') playerctl next ;;
+        esac
+        ;;
+    'System settings') exec env -u GTK_THEME gnome-control-center ;;
+    'Close an app') exec @HOME@/.local/bin/waybar-close-app ;;
+    'Lock screen') exec hyprlock ;;
+    'Power options')
+        action=$(printf '%s\n' 'Log out' 'Restart' 'Shut down' 'Cancel' | "${wofi_cmd[@]}" --prompt 'Power') || exit 0
+        case "$action" in
+            'Log out') hyprctl dispatch exit ;;
+            'Restart') systemctl reboot ;;
+            'Shut down') systemctl poweroff ;;
+        esac
+        ;;
+esac

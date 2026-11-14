@@ -1,0 +1,30 @@
+/* jojo7 GTK palette. */
+@define-color window_bg_color #17151b;
+@define-color view_bg_color #17151b;
+@define-color theme_base_color #17151b;
+@define-color window_fg_color #f0e9dc;
+@define-color view_fg_color #f0e9dc;
+@define-color theme_text_color #f0e9dc;
+@define-color accent_color #d0a753;
+@define-color accent_bg_color #d0a753;
+@define-color accent_fg_color #17151b;
+@define-color headerbar_bg_color #24212c;
+@define-color headerbar_fg_color #f0e9dc;
+@define-color borders #414958;
+@define-color error_color #cb6f6f;
+@define-color warning_color #e2c177;
+@define-color success_color #8eaa83;
+
+/* Palette hooks consumed by GTK3/GTK4 dark themes. */
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_bg_color @window_bg_color;
+@define-color theme_unfocused_fg_color @window_fg_color;
+@define-color theme_unfocused_base_color @view_bg_color;
+@define-color theme_unfocused_selected_bg_color @accent_bg_color;
+@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+selection { background-color: @accent_bg_color; color: @accent_fg_color; }

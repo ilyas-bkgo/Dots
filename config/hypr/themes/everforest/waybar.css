@@ -1,0 +1,12 @@
+/* everforest colors for the existing Waybar layout. */
+@define-color bar_bg #323d43;
+@define-color surface #3c474d;
+@define-color surface2 #505a60;
+@define-color text #d8caac;
+@define-color muted #868d80;
+@define-color accent #a7c080;
+@define-color accent2 #83b6af;
+@define-color success #87c095;
+@define-color warning #d9bb80;
+@define-color critical #e68183;
+@define-color border #59635e;

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -u
+
+previous_total=0
+previous_idle=0
+while :; do
+    read -r _ user nice system idle iowait irq softirq steal _ < /proc/stat
+    total=$((user + nice + system + idle + iowait + irq + softirq + steal))
+    idle_all=$((idle + iowait))
+    cpu=0
+    if (( previous_total > 0 && total > previous_total )); then
+        cpu=$(( (100 * (total - previous_total - idle_all + previous_idle)) / (total - previous_total) ))
+    fi
+    previous_total=$total
+    previous_idle=$idle_all
+
+    read -r mem_total mem_available < <(awk '/^MemTotal:/ {total=$2} /^MemAvailable:/ {available=$2} END {print total, available}' /proc/meminfo)
+    used=$((mem_total - mem_available))
+    ram=$((100 * used / mem_total))
+    ram_used=$(awk -v kb="$used" 'BEGIN {printf "%.1f", kb / 1048576}')
+    ram_total=$(awk -v kb="$mem_total" 'BEGIN {printf "%.1f", kb / 1048576}')
+
+    apps=$(hyprctl clients -j 2>/dev/null | jq -r '[.[] | select(.mapped == true) | "• " + (if .title == "" then .class else .title end) + " (" + .class + ")"] | if length == 0 then "No open apps" else .[:12] | join("\n") end' 2>/dev/null || printf 'App list unavailable')
+    tooltip=$(printf 'CPU: %s%%\nRAM: %s%% (%s / %s GiB)\n\nOpen apps:\n%s' "$cpu" "$ram" "$ram_used" "$ram_total" "$apps")
+    jq -cn --arg tooltip "$tooltip" '{text:"&lt;",tooltip:$tooltip}'
+    sleep 2
+done

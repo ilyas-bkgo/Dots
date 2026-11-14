@@ -1,0 +1,17 @@
+/* jujutsu-kaisen: Firefox browser chrome. */
+:root {
+  --toolbar-bgcolor: #11121d !important;
+  --toolbar-color: #e7e6f5 !important;
+  --lwt-accent-color: #11121d !important;
+  --lwt-text-color: #e7e6f5 !important;
+  --lwt-selected-tab-background-color: #1c1d2e !important;
+  --lwt-tab-text: #9d9ab8 !important;
+  --lwt-brighttext: #e7e6f5 !important;
+  --focus-outline-color: #b58cff !important;
+}
+#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar,
+#sidebar-box, #sidebar-header { background-color: #11121d !important; color: #e7e6f5 !important; }
+#urlbar-background, .searchbar-textbox { background-color: #1c1d2e !important; color: #e7e6f5 !important; border-color: #b58cff !important; }
+.tabbrowser-tab[selected] .tab-background { background-color: #1c1d2e !important; }
+.tabbrowser-tab[selected] .tab-label { color: #e7e6f5 !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #9d9ab8 !important; }

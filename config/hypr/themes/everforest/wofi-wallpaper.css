@@ -1,0 +1,11 @@
+/* Fully opaque everforest palette. Kept self-contained for Wofi's GTK CSS loader. */
+* { font-family: "Noto Sans", sans-serif; font-size: 14px; color: #d8caac; }
+window { margin: 0; padding: 10px; border: 2px solid #a7c080; border-radius: 8px; background-image: none; background-color: #2b3339; }
+#outer-box, #inner-box, #scroll { margin: 4px; padding: 5px; background-image: none; background-color: #2b3339; }
+#input { margin: 5px; padding: 9px; border: 1px solid #a7c080; border-radius: 5px; color: #d8caac; background-image: none; background-color: #333c43; }
+#entry { padding: 7px; border-radius: 5px; background-image: none; background-color: #2b3339; }
+#text { color: #d8caac; text-shadow: none; }
+#entry:selected { background-image: none; background-color: #a7c080; }
+#entry:selected #text { color: #2b3339; }
+
+#img { margin: 3px 14px 3px 3px; }

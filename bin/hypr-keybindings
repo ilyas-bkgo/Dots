@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%-24s %s\n' \
+  'Super + K' 'Open this keybinding guide' \
+  'Super + Q' 'Close the focused window' \
+  'Super + Enter' 'Open Kitty terminal' \
+  'Super + M' 'Exit Hyprland' \
+  'Super + E' 'Open Files (Nautilus)' \
+  'Super + V' 'Toggle floating for the focused window' \
+  'Super + Space' 'Open the app launcher (drun)' \
+  'Super + Shift + Space' 'Switch between US QWERTY and French AZERTY layouts' \
+  'Super + W' 'Choose a wallpaper' \
+  'Super + P' 'Toggle pseudo tiling for the focused window' \
+  'Super + J' 'Toggle the current split layout' \
+  'Super + Shift + C' 'Toggle centered master layout' \
+  'Super + F' 'Toggle fullscreen' \
+  'Super + L' 'Lock the screen' \
+  'Print' 'Save a full-screen screenshot and copy it' \
+  'Shift + Print' 'Select an area, save it, and copy it' \
+  'Super + ← / → / ↑ / ↓' 'Focus the window in that direction' \
+  'Super + Shift + ← / → / ↑ / ↓' 'Move the window in that direction' \
+  'Super + 1 … 9, 0' 'Switch to workspace 1 … 10 (0 is workspace 10)' \
+  'Super + Shift + 1 … 9, 0' 'Move the window to workspace 1 … 10' \
+  'Super + S' 'Toggle the magic scratchpad workspace' \
+  'Super + Shift + S' 'Move the focused window to the scratchpad' \
+  'Super + Left Click + drag' 'Move a window' \
+  'Super + Right Click + drag' 'Resize a window' \
+  'Fn + Volume Up' 'Raise the output volume by 5%' \
+  'Fn + Volume Down' 'Lower the output volume by 5%' \
+  'Fn + Mute' 'Toggle output mute' \
+  'Fn + Mic Mute' 'Toggle microphone mute' \
+  'Fn + Brightness Up' 'Raise screen brightness by 5%' \
+  'Fn + Brightness Down' 'Lower screen brightness by 5%' |
+  wofi --dmenu --prompt 'Hyprland keybindings' --style @HOME@/.config/wofi/style.css --width 760 --lines 29

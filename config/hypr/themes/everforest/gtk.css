@@ -1,0 +1,30 @@
+/* everforest GTK palette. */
+@define-color window_bg_color #323d43;
+@define-color view_bg_color #323d43;
+@define-color theme_base_color #323d43;
+@define-color window_fg_color #d8caac;
+@define-color view_fg_color #d8caac;
+@define-color theme_text_color #d8caac;
+@define-color accent_color #a7c080;
+@define-color accent_bg_color #a7c080;
+@define-color accent_fg_color #323d43;
+@define-color headerbar_bg_color #3c474d;
+@define-color headerbar_fg_color #d8caac;
+@define-color borders #59635e;
+@define-color error_color #e68183;
+@define-color warning_color #d9bb80;
+@define-color success_color #87c095;
+
+/* Palette hooks consumed by GTK3/GTK4 dark themes. */
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_bg_color @window_bg_color;
+@define-color theme_unfocused_fg_color @window_fg_color;
+@define-color theme_unfocused_base_color @view_bg_color;
+@define-color theme_unfocused_selected_bg_color @accent_bg_color;
+@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+selection { background-color: @accent_bg_color; color: @accent_fg_color; }

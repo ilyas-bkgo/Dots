@@ -1,0 +1,17 @@
+/* jojo7: Firefox browser chrome. */
+:root {
+  --toolbar-bgcolor: #17151b !important;
+  --toolbar-color: #f0e9dc !important;
+  --lwt-accent-color: #17151b !important;
+  --lwt-text-color: #f0e9dc !important;
+  --lwt-selected-tab-background-color: #24212c !important;
+  --lwt-tab-text: #aaa0ae !important;
+  --lwt-brighttext: #f0e9dc !important;
+  --focus-outline-color: #d0a753 !important;
+}
+#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar,
+#sidebar-box, #sidebar-header { background-color: #17151b !important; color: #f0e9dc !important; }
+#urlbar-background, .searchbar-textbox { background-color: #24212c !important; color: #f0e9dc !important; border-color: #d0a753 !important; }
+.tabbrowser-tab[selected] .tab-background { background-color: #24212c !important; }
+.tabbrowser-tab[selected] .tab-label { color: #f0e9dc !important; }
+.tabbrowser-tab:not([selected]) .tab-label { color: #aaa0ae !important; }

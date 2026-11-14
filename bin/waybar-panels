@@ -1,0 +1,449 @@
+#!/usr/bin/python3
+import gi, json, os, re, signal, subprocess, sys, time
+
+# Do not let a session-wide GTK_THEME override the active theme's GTK CSS.
+os.environ.pop('GTK_THEME', None)
+
+gi.require_version('Gtk', '3.0')
+gi.require_version('GtkLayerShell', '0.1')
+from gi.repository import Gtk, Gdk, GLib, GtkLayerShell
+
+def theme_css():
+    """Build panel colors from the currently selected theme palette."""
+    config_home = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
+    root = os.path.join(config_home, 'hypr')
+    try:
+        with open(os.path.join(root, 'theme-current'), encoding='utf-8') as f:
+            theme = f.read().strip()
+        if theme not in ('everforest', 'lawson-night', 'black-arch', 'cyberpunk', 'jojo', 'jjk', 'gruvbox'):
+            raise ValueError('unknown theme')
+        with open(os.path.join(root, 'themes', theme, 'app-palette.json'), encoding='utf-8') as f:
+            p = json.load(f)
+    except (OSError, ValueError, json.JSONDecodeError):
+        p = {'bg':'#323d43','surface':'#3c474d','surface2':'#505a60','fg':'#d8caac',
+             'muted':'#868d80','accent':'#a7c080','yellow':'#d9bb80'}
+    return f'''
+window.panel {{ background: {p['bg']}; color: {p['fg']}; border: 1px solid {p['accent']}; }}
+.panel-box {{ padding: 13px; }}
+.header-title {{ font-size: 16px; color: {p['fg']}; }}
+.header-subtitle {{ font-size: 9px; letter-spacing: 2px; color: {p['muted']}; }}
+.section-title {{ font-size: 10px; color: {p['muted']}; margin-top: 8px; }}
+.value {{ color: {p['yellow']}; }}
+.dns-button {{ font-size: 9px; }}
+row {{ min-height: 32px; padding: 2px 5px; }}
+row:selected, row:hover {{ background: {p['surface2']}; }}
+button {{ color: {p['fg']}; background: {p['surface']}; border: 1px solid {p['muted']}; border-radius: 2px; padding: 3px 7px; }}
+button:hover, button:checked {{ background: {p['accent']}; color: {p['bg']}; }}
+scale trough {{ min-height: 5px; background: {p['surface2']}; border-radius: 4px; }}
+scale highlight {{ background: {p['accent']}; border-radius: 4px; }}
+scale slider {{ min-width: 13px; min-height: 13px; background: {p['fg']}; border: 1px solid {p['accent']}; }}
+scale:disabled trough {{ background: {p['surface']}; }}
+scale:disabled highlight {{ background: {p['muted']}; }}
+scale:disabled slider {{ background: {p['muted']}; border-color: {p['muted']}; }}
+separator {{ background: {p['surface2']}; margin: 8px 0; }}
+.switch:checked {{ background: {p['accent']}; }}
+.large-value {{ font-size: 27px; color: {p['fg']}; }}
+.small-mono {{ font-family: monospace; font-size: 9px; color: {p['muted']}; }}
+'''.encode()
+
+def run(args, timeout=4):
+    try:
+        return subprocess.run(args, text=True, capture_output=True, timeout=timeout).stdout.strip()
+    except Exception:
+        return ''
+
+def wpctl(*args):
+    subprocess.run(['wpctl', *map(str, args)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def label(text, css=None):
+    w = Gtk.Label(label=text, xalign=0)
+    if css:
+        w.get_style_context().add_class(css)
+    return w
+
+def section(box, title):
+    box.pack_start(label(title.upper(), 'section-title'), False, False, 3)
+
+def divider(box):
+    box.pack_start(Gtk.Separator(), False, False, 3)
+
+def parse_audio():
+    out = run(['wpctl', 'status'])
+    sections = {'sinks': [], 'sources': [], 'streams': []}
+    active = None
+    for line in out.splitlines():
+        if '├─ Sinks:' in line: active = 'sinks'; continue
+        if '├─ Sources:' in line: active = 'sources'; continue
+        if '├─ Streams:' in line: active = 'streams'; continue
+        if active in ('sinks', 'sources') and ('├─ ' in line or '└─ ' in line): active = None
+        if active:
+            if active == 'streams' and len(line) - len(line.lstrip()) > 9:
+                continue
+            m = re.match(r'^\s*[│ ]*\s*(\*)?\s*(\d+)\.\s+(.+?)\s*(?:\[vol:.*)?$', line)
+            if m:
+                sections[active].append((int(m.group(2)), m.group(3).strip(), bool(m.group(1))))
+    return sections
+
+def volume_scale(box, title, target, default=False):
+    try:
+        current = float(run(['wpctl', 'get-volume', target]).split()[1]) * 100
+    except Exception:
+        current = 0
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    row.pack_start(label(title), True, True, 0)
+    value = label(f'{int(current)}%', 'value')
+    row.pack_end(value, False, False, 0)
+    box.pack_start(row, False, False, 3)
+    scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+    scale.set_draw_value(False)
+    scale.set_value(current)
+    scale.connect('value-changed', lambda s: (value.set_text(f'{int(s.get_value())}%'), wpctl('set-volume', '-l', '1.5', target, f'{s.get_value()/100:.2f}')))
+    box.pack_start(scale, False, False, 1)
+    return scale
+
+def device_list(box, title, devices, command):
+    section(box, title)
+    group = None
+    for ident, name, active in devices:
+        radio = Gtk.RadioButton.new_with_label_from_widget(group, name)
+        if group is None: group = radio
+        radio.set_active(active)
+        radio.connect('toggled', lambda b, i=ident: command(i) if b.get_active() else None)
+        box.pack_start(radio, False, False, 0)
+
+def audio_panel(box):
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    header.pack_start(label('◖', 'header-title'), False, False, 0)
+    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    titles.pack_start(label('Audio', 'header-title'), False, False, 0)
+    titles.pack_start(label('EASY LISTENING', 'header-subtitle'), False, False, 0)
+    header.pack_start(titles, True, True, 0)
+    mute = Gtk.Switch()
+    mute.set_active('MUTED' in run(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@']))
+    mute.connect('state-set', lambda _s, state: (wpctl('set-mute', '@DEFAULT_AUDIO_SINK@', '1' if state else '0'), False)[1])
+    header.pack_end(mute, False, False, 0)
+    box.pack_start(header, False, False, 0)
+    divider(box)
+    audio = parse_audio()
+    section(box, 'Output')
+    volume_scale(box, 'Master volume', '@DEFAULT_AUDIO_SINK@')
+    device_list(box, '', audio['sinks'], lambda i: wpctl('set-default', i))
+    divider(box)
+    section(box, 'Input')
+    volume_scale(box, 'Microphone level', '@DEFAULT_AUDIO_SOURCE@')
+    mic_mute = Gtk.CheckButton.new_with_label('Mute microphone')
+    mic_mute.set_active('MUTED' in run(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SOURCE@']))
+    mic_mute.connect('toggled', lambda b: wpctl('set-mute', '@DEFAULT_AUDIO_SOURCE@', '1' if b.get_active() else '0'))
+    box.pack_start(mic_mute, False, False, 2)
+    device_list(box, '', audio['sources'], lambda i: wpctl('set-default', i))
+    if audio['streams']:
+        divider(box)
+        section(box, 'Applications')
+        for ident, name, _active in audio['streams']:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.pack_start(label(name), True, True, 0)
+            try: v = float(run(['wpctl', 'get-volume', ident]).split()[1]) * 100
+            except Exception: v = 100
+            slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+            slider.set_draw_value(False); slider.set_value(v); slider.set_size_request(115, -1)
+            slider.connect('value-changed', lambda s, i=ident: wpctl('set-volume', '-l', '1.5', i, f'{s.get_value()/100:.2f}'))
+            row.pack_end(slider, False, False, 0)
+            box.pack_start(row, False, False, 0)
+
+def get_network():
+    rows = run(['nmcli', '-t', '--escape', 'yes', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device', 'status']).splitlines()
+    dev = conn = ''
+    for row in rows:
+        bits = row.split(':', 3)
+        if len(bits) >= 4 and bits[1] == 'wifi' and bits[2] == 'connected':
+            dev, conn = bits[0], bits[3]; break
+    ssid = run(['nmcli', '-g', 'GENERAL.CONNECTION', 'device', 'show', dev]) if dev else ''
+    ip = run(['nmcli', '-g', 'IP4.ADDRESS', 'device', 'show', dev]).splitlines()
+    gw = run(['nmcli', '-g', 'IP4.GATEWAY', 'device', 'show', dev]).splitlines()
+    signal = ''
+    for line in run(['nmcli', '-t', '-f', 'ACTIVE,SSID,SIGNAL', 'device', 'wifi', 'list', '--rescan', 'no'], timeout=1).splitlines():
+        if line.startswith('yes:'):
+            chunks = line.split(':'); signal = chunks[-1] + '%'; break
+    return dev, conn or ssid, ip[0] if ip else '—', gw[0] if gw else '—', signal
+
+def wifi_panel(box):
+    dev, conn, ip, gateway, signal = get_network()
+    enabled = run(['nmcli', '-t', '-f', 'WIFI', 'general']) == 'enabled'
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    header.pack_start(label('◈', 'header-title'), False, False, 0)
+    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    titles.pack_start(label(conn if dev else 'Wi-Fi', 'header-title'), False, False, 0)
+    titles.pack_start(label('NETWORK STATUS', 'header-subtitle'), False, False, 0)
+    header.pack_start(titles, True, True, 0)
+    refresh = Gtk.Button(label='↻')
+    refresh.set_tooltip_text('Scan for nearby networks')
+    def rescan_networks(_button):
+        subprocess.Popen(['sh', '-c', 'nmcli device wifi rescan; sleep 2; exec @HOME@/.local/bin/waybar-panels network'], start_new_session=True)
+        Gtk.main_quit()
+    refresh.connect('clicked', rescan_networks)
+    header.pack_end(refresh, False, False, 0)
+    toggle = Gtk.Switch(); toggle.set_active(enabled)
+    toggle.connect('state-set', lambda _s, state: (subprocess.Popen(['nmcli', 'radio', 'wifi', 'on' if state else 'off']), False)[1])
+    header.pack_end(toggle, False, False, 0)
+    box.pack_start(header, False, False, 0)
+    divider(box)
+    section(box, 'Connection')
+    grid = Gtk.Grid(column_spacing=14, row_spacing=5)
+    for n, (k, v) in enumerate([('Signal', signal or '—'), ('IP address', ip), ('Gateway', gateway)]):
+        grid.attach(label(k), 0, n, 1, 1); grid.attach(label(v, 'value'), 1, n, 1, 1)
+    box.pack_start(grid, False, False, 5)
+    divider(box)
+    section(box, 'DNS provider')
+    dns_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+    current_dns = run(['nmcli', '-g', 'IP4.DNS', 'device', 'show', dev]).splitlines() if dev else []
+    providers = [('Automatic', [], []) , ('Cloudflare', ['1.1.1.1','1.0.0.1'], ['2606:4700:4700::1111','2606:4700:4700::1001']), ('Google', ['8.8.8.8','8.8.4.4'], ['2001:4860:4860::8888','2001:4860:4860::8844']), ('Quad9', ['9.9.9.9','149.112.112.112'], ['2620:fe::fe','2620:fe::9'])]
+    for index, (name, v4, v6) in enumerate(providers):
+        button = Gtk.Button(label={'Automatic':'DHCP'}.get(name, name))
+        button.get_style_context().add_class('dns-button'); button.set_size_request(62, -1)
+        button.set_sensitive(bool(dev))
+        button.connect('clicked', lambda _b, n=name, a=v4, b=v6: set_dns(conn, dev, n, a, b))
+        if v4 and any(x in current_dns for x in v4): button.get_style_context().add_class('suggested-action')
+        dns_box.pack_start(button, True, True, 0)
+    custom_dns = Gtk.Button(label='Custom')
+    custom_dns.get_style_context().add_class('dns-button'); custom_dns.set_size_request(62, -1)
+    custom_dns.set_sensitive(bool(dev))
+    custom_dns.connect('clicked', lambda *_: custom_dns_dialog(conn, dev))
+    dns_box.pack_start(custom_dns, True, True, 0)
+    box.pack_start(dns_box, False, False, 0)
+    divider(box)
+    section(box, 'Nearby networks')
+    nearby_by_name = {}
+    for row in run(['nmcli', '-t', '--escape', 'yes', '-f', 'SSID,SIGNAL,SECURITY', 'device', 'wifi', 'list', '--rescan', 'no'], timeout=1).splitlines():
+        bits = row.split(':', 2)
+        if len(bits) == 3 and bits[0]:
+            name = bits[0].replace('\\:', ':').replace('\\\\', '\\')
+            if name == conn: continue
+            try: strength = int(bits[1])
+            except ValueError: strength = 0
+            if name not in nearby_by_name or strength > nearby_by_name[name][0]:
+                nearby_by_name[name] = (strength, bits[2])
+    nearby = sorted(nearby_by_name.items(), key=lambda item: item[1][0], reverse=True)
+    for name, (strength, security) in nearby[:4]:
+        lock = '  🔒' if security else ''
+        b = Gtk.Button(label=f'◈   {name}   {strength}%{lock}')
+        b.set_relief(Gtk.ReliefStyle.NONE)
+        b.connect('clicked', lambda _b, s=name, sec=security: connect_wifi(s, bool(sec)))
+        box.pack_start(b, False, False, 0)
+
+def set_dns(connection, device, name, v4, v6):
+    if not connection or not device: return
+    if name == 'Automatic':
+        args = ['ipv4.dns', '', 'ipv4.ignore-auto-dns', 'no', 'ipv6.dns', '', 'ipv6.ignore-auto-dns', 'no']
+    else:
+        args = ['ipv4.dns', ','.join(v4), 'ipv4.ignore-auto-dns', 'yes', 'ipv6.dns', ','.join(v6), 'ipv6.ignore-auto-dns', 'yes']
+    subprocess.run(['nmcli', 'connection', 'modify', connection, *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['nmcli', 'device', 'reapply', device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def custom_dns_dialog(connection, device):
+    dialog = Gtk.Dialog(title='Custom DNS servers', flags=0)
+    dialog.add_buttons('Cancel', Gtk.ResponseType.CANCEL, 'Apply', Gtk.ResponseType.OK)
+    entry = Gtk.Entry(); entry.set_placeholder_text('Comma-separated addresses, e.g. 1.1.1.1,8.8.8.8')
+    dialog.get_content_area().pack_start(entry, True, True, 12); dialog.show_all()
+    if dialog.run() == Gtk.ResponseType.OK:
+        values = [v.strip() for v in entry.get_text().split(',') if v.strip()]
+        if values and all(re.fullmatch(r'[0-9a-fA-F:.]+', v) for v in values):
+            subprocess.run(['nmcli', 'connection', 'modify', connection, 'ipv4.dns', ','.join(v for v in values if ':' not in v), 'ipv4.ignore-auto-dns', 'yes', 'ipv6.dns', ','.join(v for v in values if ':' in v), 'ipv6.ignore-auto-dns', 'yes'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['nmcli', 'device', 'reapply', device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    dialog.destroy()
+
+def connect_wifi(ssid, secured):
+    if secured:
+        dialog = Gtk.Dialog(title=f'Connect to {ssid}', flags=0)
+        dialog.add_buttons('Cancel', Gtk.ResponseType.CANCEL, 'Connect', Gtk.ResponseType.OK)
+        entry = Gtk.Entry(); entry.set_visibility(False); entry.set_placeholder_text('Wi-Fi password')
+        dialog.get_content_area().pack_start(entry, True, True, 12); dialog.show_all()
+        if dialog.run() == Gtk.ResponseType.OK:
+            subprocess.Popen(['nmcli', 'device', 'wifi', 'connect', ssid, 'password', entry.get_text()])
+        dialog.destroy()
+    else:
+        subprocess.Popen(['nmcli', 'device', 'wifi', 'connect', ssid])
+
+def read_sysfs(path, fallback=''):
+    try:
+        with open(path) as f: return f.read().strip()
+    except OSError:
+        return fallback
+
+def write_sysfs(path, value):
+    """Write only when this session already has permission; never wait for Polkit."""
+    try:
+        with open(path, 'w') as f:
+            f.write(str(value))
+        return True
+    except OSError:
+        return False
+
+def power_panel(box):
+    root = '/sys/class/power_supply/BAT0'
+    capacity = read_sysfs(root + '/capacity', '?')
+    status = read_sysfs(root + '/status', 'Unknown')
+    model = read_sysfs(root + '/model_name', 'Battery')
+    cycles = read_sysfs(root + '/cycle_count', '—')
+    charge = read_sysfs(root + '/charge_full')
+    voltage = read_sysfs(root + '/voltage_min_design')
+    try: size = f'{int(charge) * int(voltage) / 1_000_000_000_000:.0f} Wh'
+    except Exception: size = '—'
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    header.pack_start(label('▣', 'header-title'), False, False, 0)
+    names = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    names.pack_start(label('Battery', 'header-title'), False, False, 0)
+    names.pack_start(label('THRESHOLD', 'header-subtitle'), False, False, 0)
+    header.pack_start(names, True, True, 0)
+    header.pack_end(label(f'{capacity}%', 'large-value'), False, False, 0)
+    box.pack_start(header, False, False, 0)
+    meter = Gtk.ProgressBar(); meter.set_fraction(min(1.0, int(capacity or 0) / 100)); meter.set_margin_top(12)
+    box.pack_start(meter, False, False, 0)
+    details = Gtk.Grid(column_spacing=22, row_spacing=5); details.set_margin_top(10)
+    fields = [('Battery size', size), ('Charge limit', read_sysfs(root + '/charge_control_start_threshold', '—') + '–' + read_sysfs(root + '/charge_control_end_threshold', '—') + '%'), ('Charge cycles', cycles), ('Battery state', status)]
+    for n, (key, value) in enumerate(fields):
+        details.attach(label(key, 'small-mono'), (n % 2) * 2, n // 2, 1, 1)
+        details.attach(label(value, 'value'), (n % 2) * 2 + 1, n // 2, 1, 1)
+    box.pack_start(details, False, False, 4)
+    divider(box); section(box, 'Power profile')
+    choices = read_sysfs('/sys/firmware/acpi/platform_profile_choices', 'balanced').split()
+    current = read_sysfs('/sys/firmware/acpi/platform_profile', 'balanced')
+    profile_box = Gtk.Grid(column_spacing=5, row_spacing=5)
+    profile_names = {'low-power':'Power-saver', 'cool':'Cool', 'quiet':'Quiet', 'balanced':'Balanced', 'performance':'Performance'}
+    for index, profile in enumerate(choices):
+        button = Gtk.Button(label=profile_names.get(profile, profile.title()))
+        profile_path = '/sys/firmware/acpi/platform_profile'
+        can_change_profile = os.access(profile_path, os.W_OK)
+        button.set_sensitive(can_change_profile)
+        button.set_tooltip_text('Changes the firmware power profile.' if can_change_profile else 'Unavailable: this session cannot write the firmware profile.')
+        button.connect('clicked', lambda _b, p=profile, path=profile_path: write_sysfs(path, p))
+        if profile == current: button.get_style_context().add_class('suggested-action')
+        profile_box.attach(button, index % 3, index // 3, 1, 1)
+    box.pack_start(profile_box, False, False, 0)
+    note = label('Battery profile changes apply through your laptop firmware.', 'small-mono')
+    note.set_line_wrap(True); note.set_max_width_chars(42)
+    box.pack_start(note, False, False, 8)
+
+def display_panel(box):
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    header.pack_start(label('▱', 'header-title'), False, False, 0)
+    names = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    names.pack_start(label('Display', 'header-title'), False, False, 0)
+    names.pack_start(label('HYPRLAND DISPLAY CONTROLS', 'header-subtitle'), False, False, 0)
+    header.pack_start(names, True, True, 0); box.pack_start(header, False, False, 0)
+    divider(box)
+    backlight = '/sys/class/backlight/intel_backlight'
+    try:
+        maximum = int(read_sysfs(backlight + '/max_brightness', '0'))
+        current = int(read_sysfs(backlight + '/brightness', '0'))
+    except Exception: maximum = current = 0
+    section(box, 'Brightness')
+    can_change_brightness = os.access(backlight + '/brightness', os.W_OK)
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+    brightness.set_draw_value(False); brightness.set_value(100 * current / maximum if maximum else 0)
+    brightness.set_sensitive(bool(maximum and can_change_brightness))
+    brightness.set_tooltip_text('Brightness control is unavailable to this session.' if not can_change_brightness else 'Set screen brightness')
+    brightness.connect('button-release-event', lambda s, _e: (write_sysfs(backlight + '/brightness', int(maximum * s.get_value() / 100)), False)[1] if maximum and can_change_brightness else False)
+    row.pack_start(brightness, True, True, 0)
+    pct = label(f'{int(100 * current / maximum) if maximum else 0}%', 'small-mono')
+    brightness.connect('value-changed', lambda s: pct.set_text(f'{int(s.get_value())}%'))
+    row.pack_end(pct, False, False, 0); box.pack_start(row, False, False, 0)
+    if not can_change_brightness:
+        unavailable = label('Brightness is read-only for this user session.', 'small-mono')
+        unavailable.set_line_wrap(True)
+        box.pack_start(unavailable, False, False, 0)
+    divider(box); section(box, 'Text size')
+    text_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 9, 24, 1)
+    text_scale.set_draw_value(True); text_scale.set_value(12)
+    text_scale.set_tooltip_text('Applies GTK text scaling when you release the slider.')
+    text_scale.connect('button-release-event', lambda s, _e: (subprocess.Popen(['gsettings', 'set', 'org.gnome.desktop.interface', 'text-scaling-factor', f'{s.get_value()/12:.2f}']), False)[1])
+    box.pack_start(text_scale, False, False, 0)
+    divider(box); section(box, 'Scale')
+    try: monitors = json.loads(run(['hyprctl', '-j', 'monitors']))
+    except Exception: monitors = []
+    focused = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else {})
+    selected = {'name': focused.get('name', 'eDP-1')}
+    scales = Gtk.Grid(column_spacing=5, row_spacing=5)
+    for index, scale in enumerate((1, 1.33, 1.6, 2, 3.13, 4)):
+        button = Gtk.Button(label=f'{scale:g}x')
+        button.connect('clicked', lambda _b, val=scale: subprocess.Popen(['hyprctl', 'keyword', 'monitor', f"{selected['name']},preferred,auto,{val:g}"]))
+        scales.attach(button, index % 3, index // 3, 1, 1)
+    box.pack_start(scales, False, False, 0)
+    divider(box); section(box, 'Displays')
+    for monitor in monitors:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.pack_start(label('▣'), False, False, 0)
+        name = monitor.get('name', 'Display')
+        info = label(f"{name}  ·  {monitor.get('width')}×{monitor.get('height')}  ·  {monitor.get('scale')}x")
+        row.pack_start(info, True, True, 0)
+        focused_button = Gtk.Button(label='Focused' if monitor.get('focused') else 'Focus')
+        focused_button.connect('clicked', lambda _b, n=name: (selected.update(name=n), subprocess.Popen(['hyprctl', 'dispatch', 'focusmonitor', n])))
+        row.pack_end(focused_button, False, False, 0); box.pack_start(row, False, False, 0)
+
+def main():
+    kind = sys.argv[1] if len(sys.argv) > 1 else 'audio'
+    # Widget panels replace any Wofi popup so there is only one active menu.
+    subprocess.run(['pkill', '-TERM', '-x', 'wofi'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    runtime_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+    pid_file = os.path.join(runtime_dir, 'waybar-panel.pid')
+    mode_file = os.path.join(runtime_dir, 'waybar-panel.mode')
+    try:
+        old_pid = int(open(pid_file).read().strip())
+        if old_pid != os.getpid():
+            os.kill(old_pid, 0)
+            command_line = open(f'/proc/{old_pid}/cmdline', 'rb').read().decode(errors='ignore').split('\0')
+            if '@HOME@/.local/bin/waybar-panels' not in command_line:
+                raise ProcessLookupError
+            old_mode = open(mode_file).read().strip()
+            os.kill(old_pid, signal.SIGTERM)
+            if old_mode == kind:
+                return
+            deadline = time.monotonic() + 0.5
+            while time.monotonic() < deadline:
+                try: os.kill(old_pid, 0); time.sleep(0.02)
+                except OSError: break
+    except (OSError, ValueError):
+        pass
+    with open(pid_file, 'w') as f: f.write(str(os.getpid()))
+    with open(mode_file, 'w') as f: f.write(kind)
+    provider = Gtk.CssProvider(); provider.load_from_data(theme_css())
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    window.set_title('Waybar panel'); window.set_name('panel'); window.set_decorated(False)
+    widths = {'audio': 335, 'network': 365, 'power': 350, 'display': 365}
+    window.set_resizable(False); window.set_default_size(widths.get(kind, 350), -1)
+    window.get_style_context().add_class('panel')
+    GtkLayerShell.init_for_window(window)
+    GtkLayerShell.set_namespace(window, 'waybar-' + kind + '-panel')
+    GtkLayerShell.set_layer(window, GtkLayerShell.Layer.OVERLAY)
+    for edge in (GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.RIGHT): GtkLayerShell.set_anchor(window, edge, True)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 34)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, 44)
+    GtkLayerShell.set_keyboard_mode(window, GtkLayerShell.KeyboardMode.ON_DEMAND)
+    outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); outer.get_style_context().add_class('panel-box')
+    scroll = Gtk.ScrolledWindow()
+    scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroll.set_max_content_height(560)
+    scroll.set_propagate_natural_height(True)
+    scroll.add(outer)
+    window.add(scroll)
+    if kind == 'network': wifi_panel(outer)
+    elif kind == 'power': power_panel(outer)
+    elif kind == 'display': display_panel(outer)
+    else: audio_panel(outer)
+    window.connect('key-press-event', lambda _w, e: (Gtk.main_quit(), True)[1] if e.keyval == Gdk.KEY_Escape else False)
+    window.connect('destroy', lambda *_: Gtk.main_quit())
+    signal.signal(signal.SIGTERM, lambda *_: Gtk.main_quit())
+    def cleanup(*_):
+        try:
+            if open(pid_file).read().strip() == str(os.getpid()):
+                os.unlink(pid_file)
+                try: os.unlink(mode_file)
+                except OSError: pass
+        except OSError: pass
+    window.connect('destroy', cleanup)
+    window.show_all(); window.present(); window.grab_focus(); Gtk.main(); cleanup()
+
+if __name__ == '__main__':
+    import sys
+    main()

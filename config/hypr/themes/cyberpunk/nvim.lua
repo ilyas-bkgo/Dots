@@ -1,0 +1,15 @@
+return {
+  colors = {
+    bg = "#10131b",
+    surface = "#1a1e29",
+    surface2 = "#282d3a",
+    fg = "#f5e6e8",
+    muted = "#a5a9b8",
+    accent = "#ff3b81",
+    accent2 = "#00e5ff",
+    green = "#9fe870",
+    yellow = "#ffd166",
+    red = "#ff5c5c",
+    purple = "#c792ea",
+  },
+}

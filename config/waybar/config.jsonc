@@ -1,0 +1,178 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 26,
+    "margin": "0 40 0 40",
+    "spacing": 5,
+    "modules-left": [
+        "custom/fedora",
+        "clock",
+	    "hyprland/window"
+    ],
+    "modules-center": [
+        "hyprland/workspaces"
+    ],
+    "modules-right": [
+        "group/system",
+        "idle_inhibitor",
+        "network",
+        "custom/bluetooth",
+        "tray",
+        "wireplumber",
+        "hyprland/language",
+        "custom/display",
+        "custom/platform-profile",
+        "battery"
+    ],
+    "custom/fedora": {
+        "format": "<span font=\"Font Awesome 6 Brands\"></span>",
+        "tooltip": "Open desktop menu",
+        "on-click": "@HOME@/.local/bin/waybar-menu"
+    },
+    "hyprland/window": {
+        "format": "{}",
+        "max-length": 50,
+        "separate-outputs": true,
+        "rewrite": {
+            "": "Desktop"
+        }
+    },
+    "hyprland/workspaces": {
+        "disable-scroll": true,
+        "all-outputs": true,
+        "persistent-workspaces": {
+            "*": 5
+        },
+        "format": "{icon}",
+        "active-only": false,
+        "on-click": "activate",
+        "format-icons": {
+            "1": "一",
+            "2": "二",
+            "3": "三",
+            "4": "四",
+            "5": "五",
+            "6": "六",
+            "7": "七",
+            "8": "八",
+            "9": "九",
+            "10": "十",
+            "default": "一"
+        }
+    },
+    "custom/platform-profile": {
+        "format": "{icon}",
+        "exec": "@HOME@/.local/bin/waybar-platform-profile",
+        "return-type": "json",
+        "restart-interval": 5,
+        "format-icons": {
+            "low-power": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+            "balanced": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+            "performance": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+            "default": "<span font=\"Font Awesome 6 Free Solid\"></span>"
+        },
+        "tooltip": true,
+        "on-click": "@HOME@/.local/bin/waybar-panels power"
+    },
+    "custom/display": {
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "tooltip": "Display controls",
+        "on-click": "@HOME@/.local/bin/waybar-panels display"
+    },
+    "temperature": {
+        "interval": 5,
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span> {temperatureC}°C",
+        "critical-threshold": 80,
+        "format-critical": "<span font=\"Font Awesome 6 Free Solid\"></span> {temperatureC}°C",
+        "tooltip": false
+    },
+    "clock": {
+        "format": "{:%d.%m.%Y  |  %H:%M}",
+        "tooltip-format": "<big>{:%A, %d %B %Y}</big>",
+        "on-click": "gnome-calendar",
+        "interval": 1
+    },
+    "wireplumber": {
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span> {volume}%",
+        "format-muted": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "max-volume": 100,
+        "scroll-step": 5,
+        "on-click": "@HOME@/.local/bin/waybar-panels audio",
+        "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+        "tooltip": true
+    },
+    "battery": {
+        "states": {
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span> {capacity}%",
+        "format-charging": "<span font=\"Font Awesome 6 Free Solid\"></span> {capacity}%",
+        "format-plugged": "<span font=\"Font Awesome 6 Free Solid\"></span> {capacity}%",
+        "format-full": "<span font=\"Font Awesome 6 Free Solid\"></span> 100%",
+        "format-alt": "{time}",
+        "on-click": "@HOME@/.local/bin/waybar-panels power",
+        "tooltip": true
+    },
+    "hyprland/language": {
+        "format": "⌨ {long}",
+        "tooltip": true,
+        "tooltip-format": "Keyboard layout: {long}"
+    },
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+            "deactivated": "<span font=\"Font Awesome 6 Free Solid\"></span>"
+        },
+        "tooltip": true
+    },
+    "network": {
+        "format-wifi": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "format-ethernet": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "format-linked": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "format-disconnected": "<span font=\"Font Awesome 6 Free Solid\"></span>",
+        "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+        "format-alt": "<span font=\"Font Awesome 6 Free Solid\"></span> {essid}",
+        "on-click": "@HOME@/.local/bin/waybar-panels network",
+        "on-click-right": "nm-connection-editor"
+    },
+    "custom/bluetooth": {
+        "format": "<span font=\"Font Awesome 6 Brands\"></span>",
+        "tooltip": "Bluetooth devices and settings",
+        "on-click": "@HOME@/.local/bin/waybar-bluetooth-menu"
+    },
+    "group/system": {
+        "orientation": "horizontal",
+        "drawer": {
+            "transition-duration": 300,
+            "children-class": "system-drawer",
+            "transition-left-to-right": true
+        },
+        "modules": [
+            "custom/system",
+            "cpu",
+            "memory"
+        ]
+    },
+    "custom/system": {
+        "exec": "@HOME@/.local/bin/waybar-system-info",
+        "return-type": "json",
+        "on-click-right": "@HOME@/.local/bin/waybar-close-app",
+        "tooltip": true
+    },
+    "cpu": {
+        "interval": 2,
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span> {usage}%",
+        "tooltip": false
+    },
+    "memory": {
+        "interval": 2,
+        "format": "<span font=\"Font Awesome 6 Free Solid\"></span> {percentage}%",
+        "tooltip": false
+    },
+    "tray": {
+        "icon-size": 16,
+        "spacing": 8
+    }
+}

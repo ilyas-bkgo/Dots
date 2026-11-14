@@ -1,0 +1,12 @@
+/* jojo7 colors for the existing Waybar layout. */
+@define-color bar_bg #17151b;
+@define-color surface #24212c;
+@define-color surface2 #393344;
+@define-color text #f0e9dc;
+@define-color muted #aaa0ae;
+@define-color accent #d0a753;
+@define-color accent2 #8196c2;
+@define-color success #8eaa83;
+@define-color warning #e2c177;
+@define-color critical #cb6f6f;
+@define-color border #414958;

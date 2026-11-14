@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+wofi_mode_file="${XDG_RUNTIME_DIR:-/tmp}/waybar-wofi.mode"
+if pgrep -x wofi >/dev/null 2>&1; then
+    current_mode=$(cat "$wofi_mode_file" 2>/dev/null || true)
+    pkill -TERM -x wofi 2>/dev/null || true
+    [[ "$current_mode" == bluetooth ]] && exit 0
+fi
+printf 'bluetooth\n' > "$wofi_mode_file"
+clear_wofi_mode() { [[ "$(cat "$wofi_mode_file" 2>/dev/null || true)" == bluetooth ]] && : > "$wofi_mode_file"; }
+trap clear_wofi_mode EXIT
+panel_pid_file="${XDG_RUNTIME_DIR:-/tmp}/waybar-panel.pid"
+if [[ -r "$panel_pid_file" ]]; then
+    panel_pid=$(<"$panel_pid_file")
+    if [[ "$panel_pid" =~ ^[0-9]+$ ]] && tr '\0' ' ' < "/proc/$panel_pid/cmdline" 2>/dev/null | grep -q '@HOME@/.local/bin/waybar-panels'; then
+        kill -TERM "$panel_pid" 2>/dev/null || true
+    fi
+fi
+
+wofi_cmd=(env -u GTK_THEME wofi --dmenu --style @HOME@/.config/wofi/style.css --width 400 --lines 10)
+menu() { printf '%s\n' "$@" | "${wofi_cmd[@]}" --prompt 'Bluetooth'; }
+
+if ! command -v bluetoothctl >/dev/null 2>&1; then
+    menu 'bluetoothctl is unavailable' >/dev/null
+    exit 1
+fi
+
+powered=$(bluetoothctl show 2>/dev/null | sed -n 's/^[[:space:]]*Powered: //p' | head -n1)
+if [[ "$powered" != yes ]]; then
+    choice=$(menu 'Turn Bluetooth on' 'Open Bluetooth settings' 'Quit') || exit 0
+    case "$choice" in
+        'Turn Bluetooth on') bluetoothctl power on ;;
+        'Open Bluetooth settings') exec env -u GTK_THEME gnome-control-center bluetooth ;;
+    esac
+    exit 0
+fi
+
+mapfile -t devices < <(bluetoothctl devices 2>/dev/null | sed -n 's/^Device //p')
+labels=('Scan for devices' 'Turn Bluetooth off' 'Open Bluetooth settings' 'Quit')
+addresses=()
+for row in "${devices[@]}"; do
+    address=${row%% *}
+    name=${row#* }
+    [[ "$row" == "$address" ]] && name='Unknown device'
+    info=$(bluetoothctl info "$address" 2>/dev/null || true)
+    connected=$(sed -n 's/^[[:space:]]*Connected: //p' <<< "$info" | head -n1)
+    paired=$(sed -n 's/^[[:space:]]*Paired: //p' <<< "$info" | head -n1)
+    if [[ "$connected" == yes ]]; then
+        state='connected'
+    elif [[ "$paired" == yes ]]; then
+        state='paired'
+    else
+        state='available'
+    fi
+    addresses+=("$address")
+    labels+=("${#addresses[@]}.  ${name}  ·  ${state}")
+done
+
+choice=$(menu "${labels[@]}") || exit 0
+case "$choice" in
+    'Scan for devices')
+        bluetoothctl --timeout 10 scan on >/dev/null 2>&1 || true
+        exec "$0"
+        ;;
+    'Turn Bluetooth off') bluetoothctl power off; exit 0 ;;
+    'Open Bluetooth settings') exec env -u GTK_THEME gnome-control-center bluetooth ;;
+    'Quit'|'') exit 0 ;;
+esac
+
+index=${choice%%.*}
+[[ "$index" =~ ^[0-9]+$ ]] || exit 0
+(( index >= 1 && index <= ${#addresses[@]} )) || exit 0
+address=${addresses[index-1]}
+info=$(bluetoothctl info "$address" 2>/dev/null || true)
+connected=$(sed -n 's/^[[:space:]]*Connected: //p' <<< "$info" | head -n1)
+paired=$(sed -n 's/^[[:space:]]*Paired: //p' <<< "$info" | head -n1)
+name=$(sed -n 's/^[[:space:]]*Name: //p' <<< "$info" | head -n1)
+[[ -n "$name" ]] || name="$address"
+if [[ "$connected" == yes ]]; then
+    action=$(menu "Disconnect ${name}" 'Forget device' 'Back') || exit 0
+    case "$action" in
+        "Disconnect ${name}") bluetoothctl disconnect "$address" ;;
+        'Forget device') bluetoothctl remove "$address" ;;
+    esac
+elif [[ "$paired" == yes ]]; then
+    action=$(menu "Connect ${name}" 'Forget device' 'Back') || exit 0
+    case "$action" in
+        "Connect ${name}") bluetoothctl connect "$address" ;;
+        'Forget device') bluetoothctl remove "$address" ;;
+    esac
+else
+    action=$(menu "Pair and connect ${name}" 'Back') || exit 0
+    [[ "$action" == "Pair and connect ${name}" ]] && bluetoothctl pair "$address" && bluetoothctl connect "$address"
+fi

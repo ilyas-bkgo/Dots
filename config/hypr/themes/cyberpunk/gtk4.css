@@ -1,0 +1,69 @@
+/* GTK 4 / libadwaita palette; keep GTK 3 rules in gtk.css. */
+/* cyberpunk GTK palette. */
+@define-color window_bg_color #10131b;
+@define-color view_bg_color #10131b;
+@define-color theme_base_color #10131b;
+@define-color window_fg_color #f5e6e8;
+@define-color view_fg_color #f5e6e8;
+@define-color theme_text_color #f5e6e8;
+@define-color accent_color #ff3b81;
+@define-color accent_bg_color #ff3b81;
+@define-color accent_fg_color #10131b;
+@define-color headerbar_bg_color #1a1e29;
+@define-color headerbar_fg_color #f5e6e8;
+@define-color borders #414958;
+@define-color error_color #ff5c5c;
+@define-color warning_color #ffd166;
+@define-color success_color #9fe870;
+
+/* Palette hooks consumed by GTK3/GTK4 dark themes. */
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_bg_color @window_bg_color;
+@define-color theme_unfocused_fg_color @window_fg_color;
+@define-color theme_unfocused_base_color @view_bg_color;
+@define-color theme_unfocused_selected_bg_color @accent_bg_color;
+@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+selection { background-color: @accent_bg_color; color: @accent_fg_color; }
+
+:root {
+    --window-bg-color: #10131b;
+    --window-fg-color: #f5e6e8;
+    --view-bg-color: #10131b;
+    --view-fg-color: #f5e6e8;
+    --headerbar-bg-color: #1a1e29;
+    --headerbar-fg-color: #f5e6e8;
+    --headerbar-backdrop-color: #1a1e29;
+    --headerbar-border-color: #282d3a;
+    --sidebar-bg-color: #1a1e29;
+    --sidebar-fg-color: #f5e6e8;
+    --sidebar-backdrop-color: #1a1e29;
+    --secondary-sidebar-bg-color: #282d3a;
+    --secondary-sidebar-fg-color: #f5e6e8;
+    --secondary-sidebar-backdrop-color: #282d3a;
+    --card-bg-color: #282d3a;
+    --card-fg-color: #f5e6e8;
+    --popover-bg-color: #1a1e29;
+    --popover-fg-color: #f5e6e8;
+    --dialog-bg-color: #1a1e29;
+    --dialog-fg-color: #f5e6e8;
+    --accent-bg-color: #ff3b81;
+    --accent-fg-color: #10131b;
+    --accent-color: #ff3b81;
+    --destructive-bg-color: #ff5c5c;
+    --destructive-fg-color: #10131b;
+    --destructive-color: #ff5c5c;
+    --error-bg-color: #ff5c5c;
+    --error-fg-color: #10131b;
+    --error-color: #ff5c5c;
+    --warning-bg-color: #ffd166;
+    --warning-fg-color: #10131b;
+    --warning-color: #ffd166;
+    --success-bg-color: #9fe870;
+    --success-fg-color: #10131b;
+    --success-color: #9fe870;
+}
